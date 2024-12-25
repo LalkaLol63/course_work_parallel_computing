@@ -1,5 +1,6 @@
 package lohvin;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
@@ -23,22 +24,13 @@ public class IndexStorage{
         }
         Entry entry = getEntry(key);
         if(entry != null) {
-            entry.setValue(value);
+            Set<String> combinedSet = new HashSet<>(value);
+            combinedSet.addAll(entry.getValue());
+            entry.setValue(combinedSet);
         } else {
             int index = getIndex(key);
             buckets[index].add(new Entry(key, value));
             numEntries++;
-        }
-    }
-
-    public void addToSet(String key, String element) {
-        Entry entry = getEntry(key);
-        if (entry != null) {
-            entry.getValue().add(element);
-        } else {
-            Set<String> newSet = new HashSet<>();
-            newSet.add(element);
-            put(key, newSet);
         }
     }
 
@@ -119,7 +111,7 @@ public class IndexStorage{
         }
 
         public Set<String> getValue() {
-            return value;
+            return Collections.unmodifiableSet(value);
         }
 
         public void setValue(Set<String> value) {
