@@ -1,12 +1,28 @@
 package lohvin;
 
+import java.nio.file.Path;
 import java.util.*;
 
 public class IndexService {
-    private  InvertedIndex index;
+    private final InvertedIndex index;
+    private static volatile IndexService instance;
 
-    public IndexService(InvertedIndex index) {
+    private IndexService(InvertedIndex index) {
         this.index = index;
+    }
+
+    public synchronized static IndexService getInstance(InvertedIndex index) {
+        if (instance == null) {
+            instance = new IndexService(index);
+        }
+        return instance;
+    }
+
+    public static IndexService getInstance() {
+        if (instance == null) {
+            throw new IllegalStateException("IndexService ще не ініціалізований." );
+        }
+        return instance;
     }
 
     public void addDocument(String id, String text) {
