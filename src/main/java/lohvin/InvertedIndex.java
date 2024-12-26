@@ -24,7 +24,7 @@ public class InvertedIndex {
         }
     }
 
-    public void put(String key, Set<String> value) {
+    public void put(String key, DocWordPositions value) {
         globalLock.readLock().lock();
         try {
             if (checkLoadFactor()) {
@@ -51,11 +51,11 @@ public class InvertedIndex {
                     }
                 }
                 if (entry != null) {
-                    Set<String> combinedSet = new HashSet<>(value);
-                    combinedSet.addAll(entry.getValue());
-                    entry.setValue(combinedSet);
+                    entry.getValue().add(value);
                 } else {
-                    buckets[index].add(new Entry(key, value));
+                    Set<DocWordPositions> newSet = new HashSet<>();
+                    newSet.add(value);
+                    buckets[index].add(new Entry(key, newSet));
                     numEntries++;
                 }
             } finally {
@@ -68,7 +68,7 @@ public class InvertedIndex {
     }
 
 
-    public Set<String> get(String key) {
+    public Set<DocWordPositions> get(String key) {
         LinkedList<Entry>[] currentBuckets = buckets;
         int index = Math.abs(key.hashCode()) % currentBuckets.length;
         ReentrantReadWriteLock bucketLock = getBucketLock(index);
@@ -135,9 +135,9 @@ public class InvertedIndex {
 
     static class Entry {
         private String key;
-        private Set<String> value;
+        private Set<DocWordPositions> value;
 
-        public Entry(String key, Set<String> value) {
+        public Entry(String key, Set<DocWordPositions> value) {
             this.key = key;
             this.value = value;
         }
@@ -150,11 +150,11 @@ public class InvertedIndex {
             this.key = key;
         }
 
-        public Set<String> getValue() {
-            return Collections.unmodifiableSet(value);
+        public Set<DocWordPositions> getValue() {
+            return value;
         }
 
-        public void setValue(Set<String> value) {
+        public void setValue(Set<DocWordPositions> value) {
             this.value = value;
         }
     }
