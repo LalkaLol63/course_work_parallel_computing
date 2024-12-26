@@ -3,7 +3,7 @@ package lohvin;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class IndexStorage{
+public class InvertedIndex {
     LinkedList<Entry>[] buckets;
     private int numEntries = 0;
     private int numBucketLocks = 8;
@@ -13,7 +13,7 @@ public class IndexStorage{
     private ReentrantReadWriteLock globalLock = new ReentrantReadWriteLock();
 
 
-    public IndexStorage() {
+    public InvertedIndex() {
         bucketLocks = new ArrayList<>();
         for (int i = 0; i < numBucketLocks; i++) {
             bucketLocks.add(new ReentrantReadWriteLock());
@@ -27,7 +27,7 @@ public class IndexStorage{
     public void put(String key, Set<String> value) {
         globalLock.readLock().lock();
         try {
-            if(checkLoadFactor()) {
+            if (checkLoadFactor()) {
                 globalLock.readLock().unlock();
                 globalLock.writeLock().lock();
                 try {
@@ -46,11 +46,11 @@ public class IndexStorage{
             try {
                 Entry entry = null;
                 for (Entry e : buckets[index]) {
-                    if(e.getKey().equals(key)) {
+                    if (e.getKey().equals(key)) {
                         entry = e;
                     }
                 }
-                if(entry != null) {
+                if (entry != null) {
                     Set<String> combinedSet = new HashSet<>(value);
                     combinedSet.addAll(entry.getValue());
                     entry.setValue(combinedSet);
@@ -67,22 +67,6 @@ public class IndexStorage{
 
     }
 
-    public Set<String> searchByQuery(String query) {
-        String[] words = query.split(" ");
-        Set<String> files = get(words[0]);
-        if(files == null) {
-            return null;
-        }
-        Set<String> result = new HashSet<>(files);
-        for (int i = 1; i < words.length; i++) {
-            files = get(words[i]);
-            if(files == null) {
-                return null;
-            }
-            result.retainAll(files);
-        }
-        return result;
-    }
 
     public Set<String> get(String key) {
         LinkedList<Entry>[] currentBuckets = buckets;
@@ -92,7 +76,7 @@ public class IndexStorage{
         try {
             Entry entry = null;
             for (Entry e : currentBuckets[index]) {
-                if(e.getKey().equals(key)) {
+                if (e.getKey().equals(key)) {
                     entry = e;
                 }
             }
@@ -109,7 +93,7 @@ public class IndexStorage{
         bucketLock.readLock().lock();
         try {
             for (Entry entry : buckets[index]) {
-                if(entry.getKey().equals(key)) {
+                if (entry.getKey().equals(key)) {
                     return entry;
                 }
             }
@@ -122,6 +106,7 @@ public class IndexStorage{
     private ReentrantReadWriteLock getBucketLock(int bucketIndex) {
         return bucketLocks.get(bucketIndex % numBucketLocks);
     }
+
     private void updateMemory() {
         int newCapacity = capacity * 2;
         LinkedList<Entry>[] newBuckets = (LinkedList<Entry>[]) new LinkedList[newCapacity];
@@ -132,7 +117,7 @@ public class IndexStorage{
 
         for (LinkedList<Entry> bucket : buckets) {
             for (Entry entry : bucket) {
-                int newIndex = Math.abs(entry.getKey().hashCode()) % newCapacity;;
+                int newIndex = Math.abs(entry.getKey().hashCode()) % newCapacity;
                 newBuckets[newIndex].add(entry);
             }
         }
@@ -145,7 +130,7 @@ public class IndexStorage{
     }
 
     private boolean checkLoadFactor() {
-        return (double)numEntries / capacity >= loadFactorLimit;
+        return (double) numEntries / capacity >= loadFactorLimit;
     }
 
     static class Entry {
