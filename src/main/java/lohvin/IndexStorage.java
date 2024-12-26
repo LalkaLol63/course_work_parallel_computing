@@ -1,17 +1,23 @@
 package lohvin;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class IndexStorage{
     LinkedList<Entry>[] buckets;
     private int numEntries = 0;
+    private int numBucketLocks = 8;
     private int capacity = 10;
     private static final double loadFactorLimit = 0.75;
+    private ArrayList<ReentrantReadWriteLock> bucketLocks;
+    private ReentrantReadWriteLock globalLock = new ReentrantReadWriteLock();
+
 
     public IndexStorage() {
+        bucketLocks = new ArrayList<>();
+        for (int i = 0; i < numBucketLocks; i++) {
+            bucketLocks.add(new ReentrantReadWriteLock());
+        }
         buckets = (LinkedList<Entry>[]) new LinkedList[capacity];
         for (int i = 0; i < capacity; i++) {
             buckets[i] = new LinkedList<>();
@@ -19,19 +25,46 @@ public class IndexStorage{
     }
 
     public void put(String key, Set<String> value) {
-        if(checkLoadFactor()) {
-            updateMemory();
+        globalLock.readLock().lock();
+        try {
+            if(checkLoadFactor()) {
+                globalLock.readLock().unlock();
+                globalLock.writeLock().lock();
+                try {
+                    if (checkLoadFactor()) {
+                        updateMemory();
+                    }
+                } finally {
+                    globalLock.writeLock().unlock();
+                    globalLock.readLock().lock();
+                }
+            }
+
+            int index = Math.abs(key.hashCode()) % capacity;
+            ReentrantReadWriteLock bucketLock = getBucketLock(index);
+            bucketLock.writeLock().lock();
+            try {
+                Entry entry = null;
+                for (Entry e : buckets[index]) {
+                    if(e.getKey().equals(key)) {
+                        entry = e;
+                    }
+                }
+                if(entry != null) {
+                    Set<String> combinedSet = new HashSet<>(value);
+                    combinedSet.addAll(entry.getValue());
+                    entry.setValue(combinedSet);
+                } else {
+                    buckets[index].add(new Entry(key, value));
+                    numEntries++;
+                }
+            } finally {
+                bucketLock.writeLock().unlock();
+            }
+        } finally {
+            globalLock.readLock().unlock();
         }
-        Entry entry = getEntry(key);
-        if(entry != null) {
-            Set<String> combinedSet = new HashSet<>(value);
-            combinedSet.addAll(entry.getValue());
-            entry.setValue(combinedSet);
-        } else {
-            int index = getIndex(key);
-            buckets[index].add(new Entry(key, value));
-            numEntries++;
-        }
+
     }
 
     public Set<String> searchByQuery(String query) {
@@ -52,37 +85,59 @@ public class IndexStorage{
     }
 
     public Set<String> get(String key) {
-        Entry entry = getEntry(key);
-        if(entry != null) {
+        LinkedList<Entry>[] currentBuckets = buckets;
+        int index = Math.abs(key.hashCode()) % currentBuckets.length;
+        ReentrantReadWriteLock bucketLock = getBucketLock(index);
+        bucketLock.readLock().lock();
+        try {
+            Entry entry = null;
+            for (Entry e : currentBuckets[index]) {
+                if(e.getKey().equals(key)) {
+                    entry = e;
+                }
+            }
+            if (entry == null) return null;
             return entry.getValue();
+        } finally {
+            bucketLock.readLock().unlock();
         }
-        return null;
     }
 
     private Entry getEntry(String key) {
-        int index = getIndex(key);
-        for (Entry entry : buckets[index]) {
-            if(entry.getKey().equals(key)) {
-                return entry;
+        int index = Math.abs(key.hashCode()) % capacity;
+        ReentrantReadWriteLock bucketLock = getBucketLock(index);
+        bucketLock.readLock().lock();
+        try {
+            for (Entry entry : buckets[index]) {
+                if(entry.getKey().equals(key)) {
+                    return entry;
+                }
             }
+            return null;
+        } finally {
+            bucketLock.readLock().unlock();
         }
-        return null;
+    }
+
+    private ReentrantReadWriteLock getBucketLock(int bucketIndex) {
+        return bucketLocks.get(bucketIndex % numBucketLocks);
     }
     private void updateMemory() {
-        capacity *= 2;
-        LinkedList<Entry>[] newBuckets = (LinkedList<Entry>[]) new LinkedList[capacity];
+        int newCapacity = capacity * 2;
+        LinkedList<Entry>[] newBuckets = (LinkedList<Entry>[]) new LinkedList[newCapacity];
 
-        for (int i = 0; i < capacity; i++) {
+        for (int i = 0; i < newCapacity; i++) {
             newBuckets[i] = new LinkedList<>();
         }
 
         for (LinkedList<Entry> bucket : buckets) {
             for (Entry entry : bucket) {
-                int newIndex = getIndex(entry.getKey());
+                int newIndex = Math.abs(entry.getKey().hashCode()) % newCapacity;;
                 newBuckets[newIndex].add(entry);
             }
         }
         buckets = newBuckets;
+        capacity = newCapacity;
     }
 
     private int getIndex(String key) {
