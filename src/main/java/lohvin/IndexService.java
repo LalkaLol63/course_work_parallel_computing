@@ -2,6 +2,7 @@ package lohvin;
 
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class IndexService {
     private final InvertedIndex index;
@@ -45,20 +46,58 @@ public class IndexService {
         }
     }
 
-    public Set<DocWordPositions> search(String query) {
+    public Set<String> search(String query) {
         String[] words = query.split(" ");
+        if (words.length == 0) {
+            return Collections.emptySet();
+        }
+
         Set<DocWordPositions> files = index.get(words[0]);
-        if(files == null) {
-            return null;
+        if (files == null) {
+            return Collections.emptySet();
         }
-        Set<DocWordPositions> result = new HashSet<>(files);
+
+        Set<DocWordPositions> currentDocs = new HashSet<>(files);
+
         for (int i = 1; i < words.length; i++) {
-            files = index.get(words[i]);
-            if(files == null) {
-                return null;
+            String word = words[i];
+            Set<DocWordPositions> nextDocs = index.get(word);
+            if (nextDocs == null) {
+                return Collections.emptySet();
             }
-            result.retainAll(files);
+
+            Set<DocWordPositions> matchedDocs = new HashSet<>();
+
+            for (DocWordPositions currentDoc : currentDocs) {
+                for (DocWordPositions nextDoc : nextDocs) {
+                    if (currentDoc.getId().equals(nextDoc.getId())) {
+                        if (hasConsecutivePositions(currentDoc.getPositions(), nextDoc.getPositions())) {
+                            matchedDocs.add(nextDoc);
+                        }
+                    }
+                }
+            }
+
+            if (matchedDocs.isEmpty()) {
+                return Collections.emptySet();
+            }
+
+            currentDocs = matchedDocs;
         }
-        return result;
+
+        return currentDocs.stream()
+                .map(DocWordPositions::getId)
+                .collect(Collectors.toSet());
+    }
+
+    private boolean hasConsecutivePositions(int[] positions1, int[] positions2) {
+        for (int pos1 : positions1) {
+            for (int pos2 : positions2) {
+                if (pos2 == pos1 + 1) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
