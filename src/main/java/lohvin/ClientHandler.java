@@ -24,27 +24,31 @@ public class ClientHandler implements Runnable {
             HttpRequest request = HttpUtils.parseRequest(in);
             HttpResponse response;
 
-            switch (request.getPath()) {
-                case "/search":
-                    response = handleSearch(request);
-                    break;
-                case "/document":
-                    if ("POST".equalsIgnoreCase(request.getMethod())) {
-                        response = handleAddDocument(request);
-                    } else if ("GET".equalsIgnoreCase(request.getMethod())) {
-                        response = handleGetDocument(request);
-                    } else {
-                        response = new HttpResponse(405, "Method Not Allowed", Map.of(), "Unsupported method.");
-                    }
-                    break;
-                default:
-                    response = new HttpResponse(404, "Not Found", Map.of(), "Endpoint not found.");
+            if (request.getPath().startsWith("/search")) {
+                response = handleSearch(request);
+            } else if (request.getPath().startsWith("/document")) {
+                if ("POST".equalsIgnoreCase(request.getMethod())) {
+                    response = handleAddDocument(request);
+                } else if ("GET".equalsIgnoreCase(request.getMethod())) {
+                    response = handleGetDocument(request);
+                } else {
+                    response = new HttpResponse(405, "Method Not Allowed", Map.of(), "Unsupported method.");
+                }
+            } else {
+                response = new HttpResponse(404, "Not Found", Map.of(), "Endpoint not found.");
             }
 
             out.write(response.toString());
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();
+            System.out.println("Error handling client request.");
+        } finally {
+            try {
+                clientSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
