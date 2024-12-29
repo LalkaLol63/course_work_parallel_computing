@@ -29,8 +29,8 @@ public class IndexFiller extends Thread {
         int size = files.size();
         for(int i = threadId; i < size; i += threadNum) {
             Path filePath = files.get(i);
-            String content = fileManager.loadFile(files.get(i));
-            indexService.addDocument(filePath.toString(), content);
+            String content = fileManager.loadFile(filePath);
+            indexService.addDocument(fileManager.pathToId(filePath), content);
         }
     }
 }

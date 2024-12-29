@@ -1,5 +1,6 @@
 package lohvin;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,29 +33,43 @@ public class FileManager {
         return instance;
     }
 
+    public Path idToPath(String id) {
+        return baseDirectory.resolve(id.replace("-", File.separator) + ".txt");
+    }
 
-    public String loadFile(String relativePath) {
+    public String pathToId(Path path) {
+        return baseDirectory.relativize(path).toString().replace(File.separator, "-").replace(".txt", "");
+    }
+
+    public String loadFile(Path relativePath) {
         Path path = baseDirectory.resolve(relativePath);
         try {
             return Files.readString(path);
         } catch (IOException e) {
-            throw new RuntimeException("Помилка при читанні файлу: " + path, e);
+            System.out.println("Помилка при читанні файлу: " + path);
+            e.printStackTrace();
+            return "";
         }
     }
 
-    public void saveFile(String relativePath, String content) {
+    public void saveFile(Path relativePath, String content) {
         Path path = baseDirectory.resolve(relativePath);
         try {
             Files.writeString(path, content);
         } catch (IOException e) {
-            throw new RuntimeException("Помилка при записі файлу: " + path, e);
+            System.out.println("Помилка при записі файлу: " + path);
+            e.printStackTrace();
         }
     }
 
-    public List<Path> getAllFiles() throws IOException {
+    public List<Path> getAllFiles() {
         try (Stream<Path> stream = Files.walk(baseDirectory)) {
             return stream.filter(Files::isRegularFile)
                     .toList();
+        } catch (IOException e) {
+            System.out.println("Помилка при читанні всіх файлів з директорії: " + baseDirectory);
+            e.printStackTrace();
+            return List.of();
         }
     }
 }
