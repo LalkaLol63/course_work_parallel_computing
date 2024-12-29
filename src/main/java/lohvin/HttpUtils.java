@@ -2,6 +2,8 @@ package lohvin;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,7 +16,7 @@ public class HttpUtils {
 
         String[] parts = requestLine.split(" ");
         String method = parts[0];
-        String path = parts[1];
+        String path = URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
         Map<String, String> headers = new HashMap<>();
         String body = null;
 
@@ -33,6 +35,31 @@ public class HttpUtils {
         }
 
         return new HttpRequest(method, path, headers, body);
+    }
+
+    public static HttpResponse parseResponse(BufferedReader in) throws IOException {
+        String statusLine = in.readLine();
+        if (statusLine == null || statusLine.isEmpty()) {
+            throw new IOException("Empty response");
+        }
+
+        String[] statusParts = statusLine.split(" ", 3);
+        int statusCode = Integer.parseInt(statusParts[1]);
+        String statusMessage = statusParts[2];
+
+        Map<String, String> headers = new HashMap<>();
+        String line;
+        while ((line = in.readLine()) != null && !line.isEmpty()) {
+            String[] headerParts = line.split(": ", 2);
+            headers.put(headerParts[0], headerParts[1]);
+        }
+
+        StringBuilder body = new StringBuilder();
+        while (in.ready() && (line = in.readLine()) != null) {
+            body.append(line).append("\n");
+        }
+
+        return new HttpResponse(statusCode, statusMessage, headers, body.toString().trim());
     }
 
     public static String extractQueryParam(String path, String paramName) {

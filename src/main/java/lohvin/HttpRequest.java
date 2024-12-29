@@ -1,5 +1,7 @@
 package lohvin;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Map;
 
 public class HttpRequest {
@@ -45,5 +47,18 @@ public class HttpRequest {
 
     public void setBody(String body) {
         this.body = body;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder request = new StringBuilder();
+        request.append(method).append(" ").append(path).append(" HTTP/1.1\r\n");
+        headers.forEach((key, value) -> request.append(key).append(": ").append(value).append("\r\n"));
+        request.append("\r\n");
+        if (body != null) {
+            request.append(body);
+        }
+        request.append("\r\n");
+        return request.toString();
     }
 }
