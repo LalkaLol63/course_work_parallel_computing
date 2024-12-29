@@ -41,6 +41,12 @@ public class FileManager {
         return baseDirectory.relativize(path).toString().replace(File.separator, "-").replace(".txt", "");
     }
 
+    public boolean fileExists(Path relativePath) {
+        Path path = baseDirectory.resolve(relativePath);
+        return Files.exists(path);
+    }
+
+
     public String loadFile(Path relativePath) {
         Path path = baseDirectory.resolve(relativePath);
         try {
@@ -55,6 +61,7 @@ public class FileManager {
     public void saveFile(Path relativePath, String content) {
         Path path = baseDirectory.resolve(relativePath);
         try {
+            Files.createDirectories(path.getParent());
             Files.writeString(path, content);
         } catch (IOException e) {
             System.out.println("Помилка при записі файлу: " + path);
@@ -71,5 +78,9 @@ public class FileManager {
             e.printStackTrace();
             return List.of();
         }
+    }
+
+    public Path getBaseDirectory() {
+        return baseDirectory;
     }
 }
