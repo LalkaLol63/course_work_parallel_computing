@@ -1,11 +1,12 @@
 package lohvin;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class InvertedIndex {
     LinkedList<Entry>[] buckets;
-    private int numEntries = 0;
+    private AtomicInteger numEntries = new AtomicInteger(0);
     private int numBucketLocks = 8;
     private int capacity = 10;
     private static final double loadFactorLimit = 0.75;
@@ -56,7 +57,7 @@ public class InvertedIndex {
                     Set<DocWordPositions> newSet = new HashSet<>();
                     newSet.add(value);
                     buckets[index].add(new Entry(key, newSet));
-                    numEntries++;
+                    numEntries.incrementAndGet();
                 }
             } finally {
                 bucketLock.writeLock().unlock();
@@ -130,7 +131,7 @@ public class InvertedIndex {
     }
 
     private boolean checkLoadFactor() {
-        return (double) numEntries / capacity >= loadFactorLimit;
+        return (double) numEntries.get() / capacity >= loadFactorLimit;
     }
 
     static class Entry {
