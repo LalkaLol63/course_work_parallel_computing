@@ -10,8 +10,8 @@ public class InvertedIndex {
     private int numBucketLocks = 8;
     private int capacity = 10;
     private static final double loadFactorLimit = 0.75;
-    private ArrayList<ReentrantReadWriteLock> bucketLocks;
-    private ReentrantReadWriteLock globalLock = new ReentrantReadWriteLock();
+    private final ArrayList<ReentrantReadWriteLock> bucketLocks;
+    private final ReentrantReadWriteLock globalLock = new ReentrantReadWriteLock();
 
 
     public InvertedIndex() {
@@ -88,22 +88,6 @@ public class InvertedIndex {
         }
     }
 
-    private Entry getEntry(String key) {
-        int index = Math.abs(key.hashCode()) % capacity;
-        ReentrantReadWriteLock bucketLock = getBucketLock(index);
-        bucketLock.readLock().lock();
-        try {
-            for (Entry entry : buckets[index]) {
-                if (entry.getKey().equals(key)) {
-                    return entry;
-                }
-            }
-            return null;
-        } finally {
-            bucketLock.readLock().unlock();
-        }
-    }
-
     private ReentrantReadWriteLock getBucketLock(int bucketIndex) {
         return bucketLocks.get(bucketIndex % numBucketLocks);
     }
@@ -124,10 +108,6 @@ public class InvertedIndex {
         }
         buckets = newBuckets;
         capacity = newCapacity;
-    }
-
-    private int getIndex(String key) {
-        return Math.abs(key.hashCode()) % capacity;
     }
 
     private boolean checkLoadFactor() {
