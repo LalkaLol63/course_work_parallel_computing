@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class Server {
-    private static final int PORT = 6666;
+public class Server extends Thread {
+    private static final int PORT = 80;
     private ThreadPool threadPool;
     private ServerSocket serverSocket;
 
@@ -13,10 +13,13 @@ public class Server {
         threadPool = new ThreadPool(numThreads);
     }
 
-    public void start() {
-        try{
+    @Override
+    public void run() {
+        try {
             serverSocket = new ServerSocket(PORT);
-            while(!serverSocket.isClosed()) {
+            System.out.println("Сервер запущено на порті " + PORT);
+            threadPool.start();
+            while (!serverSocket.isClosed()) {
                 Socket clientSocket = serverSocket.accept();
                 threadPool.submit(new ClientHandler(clientSocket));
             }
@@ -25,7 +28,7 @@ public class Server {
         }
     }
 
-    public void stop() {
+    public void stopServer() {
         try {
             threadPool.shutdown();
             if (serverSocket != null && !serverSocket.isClosed()) {
