@@ -17,22 +17,9 @@ public class HttpUtils {
         String[] parts = requestLine.split(" ");
         String method = parts[0];
         String path = URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
-        Map<String, String> headers = new HashMap<>();
-        String body = null;
 
-        String line;
-        while ((line = in.readLine()) != null && !line.isEmpty()) {
-            String[] headerParts = line.split(": ", 2);
-            headers.put(headerParts[0], headerParts[1]);
-        }
-
-        if ("POST".equals(method)) {
-            StringBuilder bodyBuilder = new StringBuilder();
-            while (in.ready() && (line = in.readLine()) != null) {
-                bodyBuilder.append(line).append("\n");
-            }
-            body = bodyBuilder.toString().trim();
-        }
+        Map<String, String> headers = parseHeaders(in);
+        String body = parseBody(in, headers);
 
         return new HttpRequest(method, path, headers, body);
     }
@@ -47,19 +34,36 @@ public class HttpUtils {
         int statusCode = Integer.parseInt(statusParts[1]);
         String statusMessage = statusParts[2];
 
+        Map<String, String> headers = parseHeaders(in);
+        String body = parseBody(in, headers);
+
+        return new HttpResponse(statusCode, statusMessage, headers, body);
+    }
+
+    private static Map<String, String> parseHeaders(BufferedReader in) throws IOException {
         Map<String, String> headers = new HashMap<>();
         String line;
         while ((line = in.readLine()) != null && !line.isEmpty()) {
             String[] headerParts = line.split(": ", 2);
             headers.put(headerParts[0], headerParts[1]);
         }
+        return headers;
+    }
 
-        StringBuilder body = new StringBuilder();
-        while (in.ready() && (line = in.readLine()) != null) {
-            body.append(line).append("\n");
+    private static String parseBody(BufferedReader in, Map<String, String> headers) throws IOException {
+        if (!headers.containsKey("Content-Length")) {
+            return null;
         }
 
-        return new HttpResponse(statusCode, statusMessage, headers, body.toString().trim());
+        int contentLength = Integer.parseInt(headers.get("Content-Length"));
+        char[] bodyChars = new char[contentLength];
+        int read = in.read(bodyChars, 0, contentLength);
+
+        if (read != contentLength) {
+            throw new IOException("Failed to read full body");
+        }
+
+        return new String(bodyChars);
     }
 
     public static String extractQueryParam(String path, String paramName) {
