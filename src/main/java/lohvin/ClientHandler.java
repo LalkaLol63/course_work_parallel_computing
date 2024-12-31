@@ -23,8 +23,9 @@ public class ClientHandler implements Runnable {
 
             HttpRequest request = HttpUtils.parseRequest(in);
             HttpResponse response;
-
-            if (request.getPath().startsWith("/search")) {
+            if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+                response = new HttpResponse(204, "No content", Map.of(), "");
+            } else if (request.getPath().startsWith("/search")) {
                 response = handleSearch(request);
             } else if (request.getPath().startsWith("/document")) {
                 if ("POST".equalsIgnoreCase(request.getMethod())) {
@@ -38,9 +39,10 @@ public class ClientHandler implements Runnable {
                 response = new HttpResponse(404, "Not Found", Map.of(), "Endpoint not found.");
             }
 
+            response.addCorsHeaders();
             out.write(response.toString());
             out.flush();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             System.out.println("Error handling client request.");
         } finally {
@@ -55,13 +57,14 @@ public class ClientHandler implements Runnable {
     public HttpResponse handleSearch(HttpRequest request) {
         String query = HttpUtils.extractQueryParam(request.getPath(), "query");
         if (query == null || query.isEmpty()) {
-            return errorResponse(400, "Bad Request","Missing 'query' parameter");
+            return errorResponse(400, "Bad Request", "Missing 'query' parameter");
         }
 
         Set<String> documentIds = IndexService.getInstance().search(query);
 
+        String message = !documentIds.isEmpty() ? "The documents were found." : "Nothing was found.";
         Map<String, Object> responseBody = Map.of(
-                "status", "success",
+                "message", message,
                 "query", query,
                 "results", documentIds
         );
@@ -74,19 +77,18 @@ public class ClientHandler implements Runnable {
         String text = requestBody.get("text");
 
         if (id == null || text == null) {
-            return errorResponse(400, "Bad Request","Missing 'id' or 'text' parameter");
+            return errorResponse(400, "Bad Request", "Missing 'id' or 'text' parameter");
         }
 
         FileManager fileManager = FileManager.getInstance();
         Path filePath = fileManager.idToPath(id);
         if (fileManager.fileExists(filePath)) {
-            return errorResponse(409, "Conflict","File already exists.");
+            return errorResponse(409, "Conflict", "File already exists.");
         }
 
         fileManager.saveFile(filePath, text);
         IndexService.getInstance().addDocument(id, text);
         Map<String, Object> responseBody = Map.of(
-                "status", "success",
                 "message", "Document successfully added",
                 "id", id
         );
@@ -97,7 +99,7 @@ public class ClientHandler implements Runnable {
     public HttpResponse handleGetDocument(HttpRequest request) {
         String path = request.getPath();
         if (!path.startsWith("/document/")) {
-            return errorResponse(400, "Bad Request","Invalid path format");
+            return errorResponse(400, "Bad Request", "Invalid path format");
         }
 
         String id = path.substring("/document/".length());
@@ -113,7 +115,6 @@ public class ClientHandler implements Runnable {
 
         String content = fileManager.loadFile(filePath);
         Map<String, Object> responseBody = Map.of(
-                "status", "success",
                 "id", id,
                 "content", content
         );
@@ -122,7 +123,6 @@ public class ClientHandler implements Runnable {
 
     private HttpResponse errorResponse(int statusCode, String statusMessage, String message) {
         Map<String, Object> responseBody = Map.of(
-                "status", "error",
                 "message", message
         );
         return new HttpResponse(

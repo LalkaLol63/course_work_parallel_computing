@@ -52,8 +52,8 @@ public class HttpResponse {
 
     public void addCorsHeaders() {
         headers.put("Access-Control-Allow-Origin", "*");
-        headers.put("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        headers.put("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        headers.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        headers.put("Access-Control-Allow-Headers", "*");
     }
 
     @Override
