@@ -10,7 +10,8 @@ public class ThreadPool {
     private final Queue<Runnable> queue = new LinkedList<>();
     private final List<Worker> workers = new ArrayList<>();
     private final int numThreads;
-    private boolean isStopped = false;
+    private volatile boolean isStopped = false;
+    private volatile boolean isStarted = false;
 
     public ThreadPool(int numThreads) {
         this.numThreads = numThreads;
@@ -28,6 +29,8 @@ public class ThreadPool {
     }
 
     public synchronized void start() {
+        if(isStarted) throw new IllegalStateException("ThreadPool is already started");
+        isStarted = true;
         for (Worker t : workers) {
             t.start();
         }
@@ -38,23 +41,33 @@ public class ThreadPool {
         for (Worker t : workers) {
             t.interrupt();
         }
+        synchronized (queue) {
+            queue.notifyAll();
+        }
     }
 
     private class Worker extends Thread {
         @Override
         public void run() {
-            while (!isInterrupted()) {
+            while (!isStopped) {
                 try {
                     Runnable task;
                     synchronized (queue) {
-                        while (queue.isEmpty()) {
-                            queue.wait();
+                        while (queue.isEmpty() && !isStopped) {
+                            try {
+                                queue.wait();
+                            } catch (InterruptedException e) {
+                                return;
+                            }
+                        }
+                        if(isStopped) {
+                            return;
                         }
                         task = queue.poll();
                     }
                     task.run();
-                } catch (InterruptedException e) {
-                    return;
+                } catch (Exception e) {
+                    System.out.println("Помилка при виконанні задачі" + e.getMessage());
                 }
             }
         }
