@@ -7,6 +7,7 @@ import java.net.Socket;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -20,9 +21,9 @@ public class Client {
         while (true) {
             try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT);
                  BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                 BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+                 BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))
             ) {
-                System.out.println("Виберіть дію:");
+                System.out.println("\nВиберіть дію:");
                 System.out.println("1. Додати документ");
                 System.out.println("2. Отримати документ");
                 System.out.println("3. Пошук");
@@ -62,12 +63,33 @@ public class Client {
                 out.flush();
 
                 HttpResponse response = HttpUtils.parseResponse(in);
-                System.out.println("Відовідь сервера:");
-                System.out.println("Код статусу: " + response.getStatusCode());
-                System.out.println("Повідомлення: " + response.getStatusMessage());
-                System.out.println("Тіло: " + response.getBody());
+                showResponse(response);
             } catch (IOException e) {
                 e.printStackTrace();
+                break;
+            }
+        }
+    }
+
+    private static void showResponse(HttpResponse response) {
+        System.out.println("Відовідь сервера:");
+        System.out.println("Код статусу: " + response.getStatusCode());
+        System.out.println("Статус: " + response.getStatusMessage());
+        Map<String, Object> requestBody = gson.fromJson(response.getBody(), Map.class);
+
+        String message = (String) requestBody.get("message");
+        System.out.println(requestBody.get("message"));
+        if(requestBody.containsKey("id")) {
+            System.out.println("Id документу: " + requestBody.get("id"));
+        }
+        if(requestBody.containsKey("content")) {
+            System.out.println("Вміст документу: " + requestBody.get("content"));
+        }
+        if(requestBody.containsKey("query")) {
+            System.out.println("Запит: " + requestBody.get("query"));
+            if(!message.contains("Nothing")) {
+                List<String> results = (List<String>) requestBody.get("results");
+                results.forEach(System.out::println);
             }
         }
     }
