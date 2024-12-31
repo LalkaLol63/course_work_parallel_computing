@@ -51,6 +51,10 @@ public class HttpRequest {
 
     @Override
     public String toString() {
+        if (body != null && !headers.containsKey("Content-Length")) {
+            headers.put("Content-Length", String.valueOf(body.length()));
+        }
+
         StringBuilder request = new StringBuilder();
         request.append(method).append(" ").append(path).append(" HTTP/1.1\r\n");
         headers.forEach((key, value) -> request.append(key).append(": ").append(value).append("\r\n"));

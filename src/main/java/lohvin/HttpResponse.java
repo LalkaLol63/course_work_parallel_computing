@@ -14,7 +14,7 @@ public class HttpResponse {
     public HttpResponse(int statusCode, String statusMessage, Map<String, String> headers, String body) {
         this.statusCode = statusCode;
         this.statusMessage = statusMessage;
-        this.headers = headers;
+        this.headers = new HashMap<>(headers);
         this.body = body;
     }
 
@@ -50,12 +50,23 @@ public class HttpResponse {
         this.body = body;
     }
 
+    public void addCorsHeaders() {
+        headers.put("Access-Control-Allow-Origin", "*");
+        headers.put("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        headers.put("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
+
     @Override
     public String toString() {
+        if (body != null && !headers.containsKey("Content-Length")) {
+            headers.put("Content-Length", String.valueOf(body.length()));
+        }
+
         StringBuilder response = new StringBuilder();
         response.append("HTTP/1.1 ").append(statusCode).append(" ").append(statusMessage).append("\r\n");
         headers.forEach((key, value) -> response.append(key).append(": ").append(value).append("\r\n"));
         response.append("\r\n").append(body);
+        response.append("\r\n");
         return response.toString();
     }
 }
