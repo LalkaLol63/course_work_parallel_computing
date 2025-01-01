@@ -52,12 +52,10 @@ public class IndexService {
             return Collections.emptySet();
         }
 
-        Set<DocWordPositions> files = index.get(words[0]);
-        if (files == null) {
+        Set<DocWordPositions> currentDocs = index.get(words[0]);
+        if (currentDocs == null) {
             return Collections.emptySet();
         }
-
-        Set<DocWordPositions> currentDocs = new HashSet<>(files);
 
         for (int i = 1; i < words.length; i++) {
             String word = words[i];

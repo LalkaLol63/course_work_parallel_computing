@@ -41,12 +41,12 @@ public class Client {
                         String text = scanner.nextLine();
 
                         Map<String, String> body = Map.of("id", id, "text", text);
-                        request = new HttpRequest("POST", "/document", Map.of("Content-Type", "application/json"), gson.toJson(body));
+                        request = new HttpRequest("POST", "/documents", Map.of("Content-Type", "application/json"), gson.toJson(body));
                     }
                     case 2 -> {
                         System.out.println("Введіть ID документа:");
                         String id = scanner.nextLine();
-                        request = new HttpRequest("GET", "/document/" + id, Map.of(), null);
+                        request = new HttpRequest("GET", "/documents/" + id, Map.of(), null);
                     }
                     case 3 -> {
                         System.out.println("Введіть запит для пошуку:");

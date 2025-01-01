@@ -2,6 +2,7 @@ package lohvin;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.HashMap;
 import java.util.Map;
 
 public class HttpRequest {
@@ -13,7 +14,7 @@ public class HttpRequest {
     public HttpRequest(String method, String path, Map<String, String> headers, String body) {
         this.method = method;
         this.path = path;
-        this.headers = headers;
+        this.headers = new HashMap<>(headers);
         this.body = body;
     }
 

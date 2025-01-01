@@ -15,7 +15,6 @@ public class IndexBuilder {
     public void buildIndex() {
         ArrayList<Thread> threads = new ArrayList<>();
         List<Path> files = FileManager.getInstance().getAllFiles();
-        System.out.println(files.size());
         long start = System.nanoTime();
         for (int i = 0; i < numThreads; i++) {
             threads.add(new IndexFiller(files, i, numThreads));

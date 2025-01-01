@@ -82,7 +82,7 @@ public class InvertedIndex {
                 }
             }
             if (entry == null) return null;
-            return entry.getValue();
+            return new HashSet<>(entry.getValue());
         } finally {
             bucketLock.readLock().unlock();
         }

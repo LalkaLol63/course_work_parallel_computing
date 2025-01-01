@@ -21,8 +21,8 @@ public class IndexUpdater extends Thread {
     public void run() {
         try {
             while (!Thread.currentThread().isInterrupted()) {
-                updateIndex();
                 Thread.sleep(sleepIntervalSeconds * 1000L);
+                updateIndex();
             }
         } catch (InterruptedException e) {
             System.out.println("Потік IndexUpdater зупинено");
