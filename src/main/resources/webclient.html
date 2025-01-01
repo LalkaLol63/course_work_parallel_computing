@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+    <title>Inverted Index Client</title>
+    <style>
+        body {
+            font-family: Roboto, sans-serif;
+            margin: 20px 50px;
+            padding: 0;
+            background-color: #a9d6e5;
+        }
+        form {
+            margin-bottom: 20px;
+            padding: 10px 20px 20px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .response {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f5e9;
+            border: 1px solid #a5d6a7;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Inverted Index Client</h1>
+
+<form id="addDocumentForm">
+    <h2>Add Document</h2>
+    <label for="docId">Document ID:</label><br>
+    <input type="text" id="docId" name="docId" required><br><br>
+    <label for="docText">Document Text:</label><br>
+    <textarea id="docText" name="docText" rows="6" required></textarea><br><br>
+    <button type="submit">Add Document</button>
+</form>
+
+<form id="getDocumentForm">
+    <h2>Get Document</h2>
+    <label for="searchDocId">Document ID:</label><br>
+    <input type="text" id="searchDocId" name="searchDocId" required><br><br>
+    <button type="submit">Get Document</button>
+</form>
+
+<form id="searchForm">
+    <h2>Search Documents</h2>
+    <label for="searchQuery">Query:</label><br>
+    <input type="text" id="searchQuery" name="searchQuery" required><br><br>
+    <button type="submit">Search</button>
+</form>
+
+<div class="response" id="responseContainer" style="display: none;"></div>
+
+<script>
+    const serverUrl = "http://localhost:80";
+
+    async function sendRequest(method, path, body = null) {
+        const options = {
+            method,
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: body ? JSON.stringify(body) : null
+        };
+        try {
+            const response = await fetch(serverUrl + path, options);
+            const data = await response.json();
+            showResponse(data);
+        } catch (error) {
+            console.error("Error:", error);
+            showResponse({ error: "Failed to connect to the server." });
+        }
+    }
+
+    function showResponse(data) {
+        const responseContainer = document.getElementById("responseContainer");
+        responseContainer.style.display = "block";
+        responseContainer.innerHTML = "";
+
+        if (data.error) {
+            responseContainer.innerHTML = `<p><strong>Error:</strong> ${data.error}</p>`;
+            return;
+        }
+
+        if (data.message) {
+            const message = document.createElement("p");
+            message.innerHTML = `<strong>Message:</strong> ${data.message}`;
+            responseContainer.appendChild(message);
+        }
+
+        if (data.id) {
+            const docId = document.createElement("p");
+            docId.innerHTML = `<strong>Document ID:</strong> ${data.id}`;
+            responseContainer.appendChild(docId);
+        }
+
+        if (data.content) {
+            const content = document.createElement("p");
+            content.innerHTML = `<strong>Content:</strong> ${data.content}`;
+            responseContainer.appendChild(content);
+        }
+
+        if (data.query) {
+            const query = document.createElement("p");
+            query.innerHTML = `<strong>Query:</strong> ${data.query}`;
+            responseContainer.appendChild(query);
+
+            if (data.results && data.results.length > 0) {
+                const resultsTitle = document.createElement("p");
+                resultsTitle.innerHTML = `<strong>Results:</strong>`;
+                responseContainer.appendChild(resultsTitle);
+
+                const resultsList = document.createElement("ul");
+                data.results.forEach((result) => {
+                    const listItem = document.createElement("li");
+                    listItem.textContent = result;
+                    resultsList.appendChild(listItem);
+                });
+                responseContainer.appendChild(resultsList);
+            } else {
+                const noResults = document.createElement("p");
+                noResults.textContent = "No results found.";
+                responseContainer.appendChild(noResults);
+            }
+        }
+    }
+
+    document.getElementById("addDocumentForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const docId = document.getElementById("docId").value;
+        const docText = document.getElementById("docText").value;
+        sendRequest("POST", "/documents", { id: docId, text: docText });
+    });
+
+    document.getElementById("getDocumentForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const docId = document.getElementById("searchDocId").value;
+        sendRequest("GET", `/documents/${docId}`);
+    });
+
+    document.getElementById("searchForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const query = document.getElementById("searchQuery").value;
+        sendRequest("GET", `/search?query=${encodeURIComponent(query)}`);
+    });
+</script>
+
+</body>
+</html>
