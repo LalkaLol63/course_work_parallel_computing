@@ -7,10 +7,13 @@ import java.net.Socket;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ClientHandler implements Runnable {
     private final Socket clientSocket;
     private static final Gson gson = new Gson();
+    private static final ReadWriteLock fileLock = new ReentrantReadWriteLock();
 
     public ClientHandler(Socket clientSocket) {
         this.clientSocket = clientSocket;
@@ -20,14 +23,13 @@ public class ClientHandler implements Runnable {
     public void run() {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
              BufferedWriter out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()))) {
-
             HttpRequest request = HttpUtils.parseRequest(in);
             HttpResponse response;
             if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
                 response = new HttpResponse(204, "No content", Map.of(), "");
             } else if (request.getPath().startsWith("/search")) {
                 response = handleSearch(request);
-            } else if (request.getPath().startsWith("/document")) {
+            } else if (request.getPath().startsWith("/documents")) {
                 if ("POST".equalsIgnoreCase(request.getMethod())) {
                     response = handleAddDocument(request);
                 } else if ("GET".equalsIgnoreCase(request.getMethod())) {
@@ -82,12 +84,17 @@ public class ClientHandler implements Runnable {
 
         FileManager fileManager = FileManager.getInstance();
         Path filePath = fileManager.idToPath(id);
-        if (fileManager.fileExists(filePath)) {
-            return errorResponse(409, "Conflict", "File already exists.");
+
+        fileLock.writeLock().lock();
+        try {
+            if (fileManager.fileExists(filePath)) {
+                return errorResponse(409, "Conflict", "File already exists.");
+            }
+            fileManager.saveFile(filePath, text);
+        } finally {
+            fileLock.writeLock().unlock();
         }
 
-        fileManager.saveFile(filePath, text);
-        IndexService.getInstance().addDocument(id, text);
         Map<String, Object> responseBody = Map.of(
                 "message", "Document successfully added",
                 "id", id
@@ -98,27 +105,33 @@ public class ClientHandler implements Runnable {
 
     public HttpResponse handleGetDocument(HttpRequest request) {
         String path = request.getPath();
-        if (!path.startsWith("/document/")) {
+        if (!path.startsWith("/documents/")) {
             return errorResponse(400, "Bad Request", "Invalid path format");
         }
 
-        String id = path.substring("/document/".length());
+        String id = path.substring("/documents/".length());
         if (id.isEmpty()) {
             return errorResponse(400, "Bad Request", "Missing 'id' parameter");
         }
 
         FileManager fileManager = FileManager.getInstance();
         Path filePath = fileManager.idToPath(id);
-        if (!fileManager.fileExists(filePath)) {
-            return errorResponse(404, "Not Found", "File not found.");
-        }
+        fileLock.readLock().lock();
 
-        String content = fileManager.loadFile(filePath);
-        Map<String, Object> responseBody = Map.of(
-                "id", id,
-                "content", content
-        );
-        return new HttpResponse(200, "OK", Map.of("Content-Type", "application/json"), gson.toJson(responseBody));
+        try {
+            if (!fileManager.fileExists(filePath)) {
+                return errorResponse(404, "Not Found", "File not found.");
+            }
+            String content = fileManager.loadFile(filePath);
+            Map<String, Object> responseBody = Map.of(
+                    "id", id,
+                    "content", content,
+                    "message", "Document found."
+            );
+            return new HttpResponse(200, "OK", Map.of("Content-Type", "application/json"), gson.toJson(responseBody));
+        } finally {
+            fileLock.readLock().unlock();
+        }
     }
 
     private HttpResponse errorResponse(int statusCode, String statusMessage, String message) {
