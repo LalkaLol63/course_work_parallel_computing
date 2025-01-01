@@ -20,8 +20,16 @@ public class Server extends Thread {
             System.out.println("Сервер запущено на порті " + PORT);
             threadPool.start();
             while (!serverSocket.isClosed()) {
-                Socket clientSocket = serverSocket.accept();
-                threadPool.submit(new ClientHandler(clientSocket));
+                try {
+                    Socket clientSocket = serverSocket.accept();
+                    threadPool.submit(new ClientHandler(clientSocket));
+                } catch (IOException e) {
+                    if (serverSocket.isClosed()) {
+                        System.out.println("Сервер закінчив роботу.");
+                    } else {
+                        e.printStackTrace();
+                    }
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
