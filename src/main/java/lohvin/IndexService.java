@@ -69,8 +69,12 @@ public class IndexService {
             for (DocWordPositions currentDoc : currentDocs) {
                 for (DocWordPositions nextDoc : nextDocs) {
                     if (currentDoc.getId().equals(nextDoc.getId())) {
-                        if (hasConsecutivePositions(currentDoc.getPositions(), nextDoc.getPositions())) {
-                            matchedDocs.add(nextDoc);
+                        int[] filteredPositions = filterPositions(
+                                currentDoc.getPositions(),
+                                nextDoc.getPositions()
+                        );
+                        if (filteredPositions.length > 0) {
+                            matchedDocs.add(new DocWordPositions(filteredPositions, nextDoc.getId()));
                         }
                     }
                 }
@@ -88,14 +92,15 @@ public class IndexService {
                 .collect(Collectors.toSet());
     }
 
-    private boolean hasConsecutivePositions(int[] positions1, int[] positions2) {
+    private int[] filterPositions(int[] positions1, int[] positions2) {
+        List<Integer> filtered = new ArrayList<>();
         for (int pos1 : positions1) {
             for (int pos2 : positions2) {
                 if (pos2 == pos1 + 1) {
-                    return true;
+                    filtered.add(pos2);
                 }
             }
         }
-        return false;
+        return filtered.stream().mapToInt(Integer::intValue).toArray();
     }
 }
