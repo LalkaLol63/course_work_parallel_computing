@@ -22,14 +22,17 @@ public class ThreadPool {
 
     public synchronized void submit(Runnable task) throws IllegalStateException {
         if (isStopped) throw new IllegalStateException("ThreadPool is stopped");
-        synchronized (queue) {
-            queue.offer(task);
-            queue.notify();
-        }
+        queue.offer(task);
+        notify();
     }
 
     public synchronized void start() {
-        if(isStarted) throw new IllegalStateException("ThreadPool is already started");
+        if(isStarted) {
+            throw new IllegalStateException("ThreadPool is already started");
+        }
+        if (isStopped) {
+            throw new IllegalStateException("ThreadPool is stopped");
+        }
         isStarted = true;
         for (Worker t : workers) {
             t.start();
@@ -37,12 +40,18 @@ public class ThreadPool {
     }
 
     public synchronized void shutdown() {
-        isStopped = true;
-        for (Worker t : workers) {
-            t.interrupt();
+        if(!isStarted) {
+            throw new IllegalStateException("ThreadPool isn`t started");
         }
-        synchronized (queue) {
-            queue.notifyAll();
+        isStopped = true;
+        notifyAll();
+
+        for (Worker worker : workers) {
+            try {
+                worker.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -52,13 +61,9 @@ public class ThreadPool {
             while (!isStopped) {
                 try {
                     Runnable task;
-                    synchronized (queue) {
+                    synchronized (ThreadPool.this) {
                         while (queue.isEmpty() && !isStopped) {
-                            try {
-                                queue.wait();
-                            } catch (InterruptedException e) {
-                                return;
-                            }
+                            ThreadPool.this.wait();
                         }
                         if(isStopped) {
                             return;
