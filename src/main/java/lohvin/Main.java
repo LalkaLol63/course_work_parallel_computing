@@ -1,17 +1,21 @@
 package lohvin;
 
-import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
-        System.out.println("Введіть базову директорію: ");
-        String baseDirectory = scanner.nextLine().trim();
-        if (baseDirectory.isEmpty()) {
-            baseDirectory = "C:\\Users\\1\\IdeaProjects\\course_work_parallel_computing\\src\\main\\resources\\docs";
+        String baseDirectory;
+        while (true) {
+            System.out.println("Введіть базову директорію (обов'язково): ");
+            baseDirectory = scanner.nextLine().trim();
+            if (!baseDirectory.isEmpty()) {
+                break;
+            }
+            System.out.println("Базова директорія не може бути порожньою. Спробуйте ще раз.");
         }
 
         System.out.println("Введіть кількість потоків для побудови індексу (за замовчуванням: 8):");
